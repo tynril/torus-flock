@@ -42,13 +42,14 @@ struct Boid {
     position: Point2f,
     velocity: Vector2f,
     rotation: f64,
-    mesh: graphics::Mesh,
 }
 
+#[inline]
 fn euclidian_modulo(a: f64, b: f64) -> f64 {
     (a % b + b) % b
 }
 
+#[inline]
 fn toroidal_delta(a: f64, b: f64, r: f64, l: f64) -> f64 {
     if a < r && b > l - r {
         0.0 - (a + (l - b))
@@ -59,6 +60,7 @@ fn toroidal_delta(a: f64, b: f64, r: f64, l: f64) -> f64 {
     }
 }
 
+#[inline]
 fn limit_force(f: Vector2f) -> Vector2f {
     if f.norm() > MAX_FORCE {
         f.normalize() * MAX_FORCE
@@ -69,7 +71,6 @@ fn limit_force(f: Vector2f) -> Vector2f {
 
 impl Boid {
     fn new(ctx: &mut Context) -> GameResult<Boid> {
-        use graphics::Point2;
         let position =
             Point2f::from_coordinates(Vector2f::new_random().component_mul(&Vector2f::new(
                 ctx.conf.window_mode.width as f64,
@@ -79,19 +80,10 @@ impl Boid {
             position,
             velocity: (Vector2f::new_random() * MAX_SPEED) - (Vector2f::new_random() * MAX_SPEED),
             rotation: 0.0,
-            mesh: graphics::MeshBuilder::new()
-                .polygon(
-                    graphics::DrawMode::Fill,
-                    &[
-                        Point2::new(-3.0, -2.0),
-                        Point2::new(5.0, 0.0),
-                        Point2::new(-3.0, 2.0),
-                    ],
-                )
-                .build(ctx)?,
         })
     }
 
+    #[inline]
     fn update<'a, I>(&'a mut self, time: f64, others: I, w: f64, h: f64)
     where
         I: Iterator<Item = &'a Boid> + Clone,
@@ -217,12 +209,31 @@ impl Boid {
 struct MainState {
     frames: usize,
     world: World,
+    boid_mesh: graphics::Mesh,
 }
 
 impl MainState {
     fn new(ctx: &mut Context) -> GameResult<MainState> {
-        let world = World::new(ctx, 1000)?;
-        let s = MainState { frames: 0, world };
+        use graphics::Point2;
+        let world = World::new(ctx, 2000)?;
+        let s = MainState {
+            frames: 0,
+            world,
+            boid_mesh: graphics::MeshBuilder::new()
+                .polygon(
+                    graphics::DrawMode::Fill,
+                    &[
+                        Point2::new(-3.0, -2.0),
+                        Point2::new(5.0, 0.0),
+                        Point2::new(-3.0, 2.0),
+                    ],
+                )
+                .build(ctx)?,
+        };
+
+        graphics::set_color(ctx, graphics::Color::new(0.0, 0.0, 0.0, 1.0))?;
+        graphics::set_background_color(ctx, graphics::Color::new(1.0, 1.0, 1.0, 1.0));
+
         Ok(s)
     }
 }
@@ -240,12 +251,10 @@ impl event::EventHandler for MainState {
 
     fn draw(&mut self, ctx: &mut Context) -> GameResult<()> {
         graphics::clear(ctx);
-        graphics::set_color(ctx, graphics::Color::new(0.0, 0.0, 0.0, 1.0))?;
-        graphics::set_background_color(ctx, graphics::Color::new(1.0, 1.0, 1.0, 1.0));
         for boid in &self.world.boids {
             graphics::draw(
                 ctx,
-                &boid.mesh,
+                &self.boid_mesh,
                 graphics::Point2::new(boid.position.x as f32, boid.position.y as f32),
                 boid.rotation as f32,
             )?;
