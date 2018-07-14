@@ -1,19 +1,24 @@
+extern crate cgmath as cg;
 extern crate ggez;
-extern crate nalgebra as na;
+extern crate rand;
 
+use cg::prelude::*;
 use ggez::conf;
 use ggez::event;
 use ggez::graphics;
 use ggez::timer;
 use ggez::{Context, GameResult};
+use rand::prelude::*;
 
-type Point2f = na::Point2<f64>;
-type Vector2f = na::Vector2<f64>;
+type Point2f = cg::Point2<f64>;
+type Vector2f = cg::Vector2<f64>;
 
 const NEIGHBORS_RANGE: f64 = 50.0;
 const NEIGHBORS_RANGE_SQ: f64 = NEIGHBORS_RANGE * NEIGHBORS_RANGE;
 const MAX_SPEED: f64 = 72.0;
+const MAX_SPEED_SQ: f64 = MAX_SPEED * MAX_SPEED;
 const MAX_FORCE: f64 = 1.2;
+const MAX_FORCE_SQ: f64 = MAX_FORCE * MAX_FORCE;
 const DESIRED_SEPARATION: f64 = 18.0;
 const DESIRED_SEPARATION_SQ: f64 = DESIRED_SEPARATION * DESIRED_SEPARATION;
 
@@ -62,8 +67,8 @@ fn toroidal_delta(a: f64, b: f64, r: f64, l: f64) -> f64 {
 
 #[inline]
 fn limit_force(f: Vector2f) -> Vector2f {
-    if f.norm() > MAX_FORCE {
-        f.normalize() * MAX_FORCE
+    if f.magnitude2() > MAX_FORCE_SQ {
+        f.normalize_to(MAX_FORCE)
     } else {
         f
     }
@@ -71,14 +76,16 @@ fn limit_force(f: Vector2f) -> Vector2f {
 
 impl Boid {
     fn new(ctx: &mut Context) -> GameResult<Boid> {
-        let position =
-            Point2f::from_coordinates(Vector2f::new_random().component_mul(&Vector2f::new(
-                ctx.conf.window_mode.width as f64,
-                ctx.conf.window_mode.height as f64,
-            )));
+        let position = Point2f::new(
+            random::<f64>() * ctx.conf.window_mode.width as f64,
+            random::<f64>() * ctx.conf.window_mode.height as f64,
+        );
         Ok(Boid {
             position,
-            velocity: (Vector2f::new_random() * MAX_SPEED) - (Vector2f::new_random() * MAX_SPEED),
+            velocity: Vector2f::new(
+                thread_rng().gen_range(0.0 - MAX_SPEED, MAX_SPEED),
+                thread_rng().gen_range(0.0 - MAX_SPEED, MAX_SPEED),
+            ),
             rotation: 0.0,
         })
     }
@@ -98,13 +105,13 @@ impl Boid {
 
         let acceleration = self.flock(neighbors);
         self.velocity += acceleration;
-        if self.velocity.norm() > MAX_SPEED {
-            self.velocity = na::normalize(&self.velocity) * MAX_SPEED
+        if self.velocity.magnitude2() > MAX_SPEED_SQ {
+            self.velocity = self.velocity.normalize_to(MAX_SPEED);
         }
         self.position += self.velocity * time;
         self.position.x = euclidian_modulo(self.position.x, w);
         self.position.y = euclidian_modulo(self.position.y, h);
-        if self.velocity.norm() > 0.001 {
+        if self.velocity.magnitude2() > 0.001 {
             let to = self.position + self.velocity;
             self.rotation = (to.y - self.position.y).atan2(to.x - self.position.x);
         }
@@ -126,10 +133,10 @@ impl Boid {
         let mut count = 0;
         let sum = boids
             .filter_map(|b| {
-                let distance = na::distance_squared(&self.position, &b.position);
-                if distance > 0.0 && distance < DESIRED_SEPARATION_SQ {
+                let distance_sq = self.position.distance2(b.position);
+                if distance_sq > 0.0 && distance_sq < DESIRED_SEPARATION_SQ {
                     count = count + 1;
-                    Some((self.position - b.position).normalize() / distance)
+                    Some((self.position - b.position).normalize() / distance_sq.sqrt())
                 } else {
                     None
                 }
@@ -137,13 +144,13 @@ impl Boid {
             .sum::<Vector2f>();
         if count > 0 {
             let mean = sum / count as f64;
-            if mean.norm() > 0.0 {
-                limit_force((mean.normalize() * MAX_SPEED) - self.velocity)
+            if mean.magnitude2() > 0.0 {
+                limit_force(mean.normalize_to(MAX_SPEED) - self.velocity)
             } else {
-                Vector2f::zeros()
+                Vector2f::zero()
             }
         } else {
-            Vector2f::zeros()
+            Vector2f::zero()
         }
     }
 
@@ -161,13 +168,13 @@ impl Boid {
 
         if count > 0 {
             let mean = sum / count as f64;
-            if mean.norm() > 0.0 {
-                limit_force((mean.normalize() * MAX_SPEED) - self.velocity)
+            if mean.magnitude2() > 0.0 {
+                limit_force(mean.normalize_to(MAX_SPEED) - self.velocity)
             } else {
-                Vector2f::zeros()
+                Vector2f::zero()
             }
         } else {
-            Vector2f::zeros()
+            Vector2f::zero()
         }
     }
 
@@ -179,29 +186,31 @@ impl Boid {
         let sum = boids
             .map(|b| {
                 count = count + 1;
-                b.position.coords
+                b.position.to_vec()
             })
             .sum::<Vector2f>();
 
         if count > 0 {
-            self.steer_to(Point2f::from_coordinates(sum / count as f64))
+            self.steer_to(Point2f::from_vec(sum / count as f64))
         } else {
-            Vector2f::zeros()
+            Vector2f::zero()
         }
     }
 
     fn steer_to(&self, target: Point2f) -> Vector2f {
         let mut desired = target - self.position;
-        if let Some(d) = desired.try_normalize_mut(0.0001) {
-            desired = if d < 100.0 {
-                desired * (MAX_SPEED * (d / 100.0))
+        let desired_mag_sq = desired.magnitude2();
+        if desired_mag_sq > 0.0001 {
+            let desired_mag = desired_mag_sq.sqrt();
+            desired = if desired_mag < 100.0 {
+                desired.normalize_to(MAX_SPEED * (desired_mag / 100.0))
             } else {
-                desired * MAX_SPEED
+                desired.normalize_to(MAX_SPEED)
             };
 
             limit_force(desired - self.velocity)
         } else {
-            Vector2f::zeros()
+            Vector2f::zero()
         }
     }
 }

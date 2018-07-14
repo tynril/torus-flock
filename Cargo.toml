@@ -6,7 +6,7 @@ authors = ["Samuel Loretan <tynril@gmail.com>"]
 [dependencies]
 ggez = "0.4"
 rand = "0.5"
-nalgebra = "0.15"
+cgmath = "0.16"
 
 [profile.release]
 debug = true
