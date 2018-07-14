@@ -1,0 +1,12 @@
+[package]
+name = "moverep"
+version = "0.1.0"
+authors = ["Samuel Loretan <tynril@gmail.com>"]
+
+[dependencies]
+ggez = "0.4"
+rand = "0.5"
+nalgebra = "0.15"
+
+[profile.release]
+debug = true
