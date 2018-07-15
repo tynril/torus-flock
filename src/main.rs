@@ -103,7 +103,7 @@ impl Boid {
             distance_sq <= NEIGHBORS_RANGE_SQ
         });
 
-        let acceleration = self.flock(&neighbors);
+        let acceleration = self.flock(neighbors);
         self.velocity += acceleration;
         if self.velocity.magnitude2() > MAX_SPEED_SQ {
             self.velocity = self.velocity.normalize_to(MAX_SPEED);
@@ -117,31 +117,35 @@ impl Boid {
         }
     }
 
-    fn flock<'a, I>(&self, boids: &I) -> Vector2f
+    fn flock<'a, I>(&self, boids: I) -> Vector2f
     where
         I: Iterator<Item = &'a Boid> + Clone,
     {
-        (self.separate(boids.clone()) * 1.0)
-            + (self.align(boids.clone()) * 1.0)
-            + (self.cohere(boids.clone()) * 1.0)
-    }
+        let mut separate_count = 0;
+        let mut separation_sum = Vector2f::zero();
+        let mut neighbors_count = 0;
+        let mut velocity_sum = Vector2f::zero();
+        let mut position_sum = Vector2f::zero();
 
-    fn separate<'a, I>(&self, boids: I) -> Vector2f
-    where
-        I: Iterator<Item = &'a Boid>,
-    {
-        let mut count = 0.0;
-        let sum = boids.fold(Vector2f::zero(), |acc, b| {
-            let distance_sq = self.position.distance2(b.position);
+        for boid in boids {
+            neighbors_count += 1;
+
+            // Separation
+            let distance_sq = self.position.distance2(boid.position);
             if distance_sq > 0.0 && distance_sq < DESIRED_SEPARATION_SQ {
-                count += 1.0;
-                acc + ((self.position - b.position).normalize() / distance_sq.sqrt())
-            } else {
-                acc
+                separate_count += 1;
+                separation_sum += (self.position - boid.position).normalize() / distance_sq.sqrt();
             }
-        });
-        if count > 0.0 {
-            let mean = sum / count;
+
+            // Velocity
+            velocity_sum += boid.velocity;
+
+            // Position
+            position_sum += boid.position.to_vec();
+        }
+
+        let separate_force = if separate_count > 0 {
+            let mean = separation_sum / f64::from(separate_count);
             if mean.magnitude2() > 0.0 {
                 limit_force(mean.normalize_to(MAX_SPEED) - self.velocity)
             } else {
@@ -149,50 +153,26 @@ impl Boid {
             }
         } else {
             Vector2f::zero()
-        }
-    }
+        };
 
-    fn align<'a, I>(&self, boids: I) -> Vector2f
-    where
-        I: Iterator<Item = &'a Boid>,
-    {
-        let mut count = 0.0;
-        let sum = boids
-            .map(|b| {
-                count += 1.;
-                b.velocity
-            })
-            .sum::<Vector2f>();
+        let (align_force, cohere_force) = if neighbors_count > 0 {
+            let neighbors_count_f64 = f64::from(neighbors_count);
+            let velocity_mean = velocity_sum / neighbors_count_f64;
+            let position_mean = position_sum / neighbors_count_f64;
 
-        if count > 0.0 {
-            let mean = sum / count;
-            if mean.magnitude2() > 0.0 {
-                limit_force(mean.normalize_to(MAX_SPEED) - self.velocity)
-            } else {
-                Vector2f::zero()
-            }
+            (
+                if velocity_mean.magnitude2() > 0.0 {
+                    limit_force(velocity_mean.normalize_to(MAX_SPEED) - self.velocity)
+                } else {
+                    Vector2f::zero()
+                },
+                self.steer_to(Point2f::from_vec(position_mean)),
+            )
         } else {
-            Vector2f::zero()
-        }
-    }
+            (Vector2f::zero(), Vector2f::zero())
+        };
 
-    fn cohere<'a, I>(&self, boids: I) -> Vector2f
-    where
-        I: Iterator<Item = &'a Boid>,
-    {
-        let mut count = 0.0;
-        let sum = boids
-            .map(|b| {
-                count += 1.0;
-                b.position.to_vec()
-            })
-            .sum::<Vector2f>();
-
-        if count > 0.0 {
-            self.steer_to(Point2f::from_vec(sum / count))
-        } else {
-            Vector2f::zero()
-        }
+        (separate_force * 1.0) + (align_force * 1.0) + (cohere_force * 1.0)
     }
 
     fn steer_to(&self, target: Point2f) -> Vector2f {
@@ -222,7 +202,7 @@ struct MainState {
 impl MainState {
     fn new(ctx: &mut Context) -> GameResult<MainState> {
         use graphics::Point2;
-        let world = World::new(ctx, 2000)?;
+        let world = World::new(ctx, 3000)?;
         let s = MainState {
             frames: 0,
             world,
