@@ -77,8 +77,8 @@ fn limit_force(f: Vector2f) -> Vector2f {
 impl Boid {
     fn new(ctx: &mut Context) -> GameResult<Boid> {
         let position = Point2f::new(
-            random::<f64>() * ctx.conf.window_mode.width as f64,
-            random::<f64>() * ctx.conf.window_mode.height as f64,
+            random::<f64>() * f64::from(ctx.conf.window_mode.width),
+            random::<f64>() * f64::from(ctx.conf.window_mode.height),
         );
         Ok(Boid {
             position,
@@ -103,7 +103,7 @@ impl Boid {
             distance_sq <= NEIGHBORS_RANGE_SQ
         });
 
-        let acceleration = self.flock(neighbors);
+        let acceleration = self.flock(&neighbors);
         self.velocity += acceleration;
         if self.velocity.magnitude2() > MAX_SPEED_SQ {
             self.velocity = self.velocity.normalize_to(MAX_SPEED);
@@ -117,7 +117,7 @@ impl Boid {
         }
     }
 
-    fn flock<'a, I>(&self, boids: I) -> Vector2f
+    fn flock<'a, I>(&self, boids: &I) -> Vector2f
     where
         I: Iterator<Item = &'a Boid> + Clone,
     {
@@ -130,20 +130,18 @@ impl Boid {
     where
         I: Iterator<Item = &'a Boid>,
     {
-        let mut count = 0;
-        let sum = boids
-            .filter_map(|b| {
-                let distance_sq = self.position.distance2(b.position);
-                if distance_sq > 0.0 && distance_sq < DESIRED_SEPARATION_SQ {
-                    count = count + 1;
-                    Some((self.position - b.position).normalize() / distance_sq.sqrt())
-                } else {
-                    None
-                }
-            })
-            .sum::<Vector2f>();
-        if count > 0 {
-            let mean = sum / count as f64;
+        let mut count = 0.0;
+        let sum = boids.fold(Vector2f::zero(), |acc, b| {
+            let distance_sq = self.position.distance2(b.position);
+            if distance_sq > 0.0 && distance_sq < DESIRED_SEPARATION_SQ {
+                count += 1.0;
+                acc + ((self.position - b.position).normalize() / distance_sq.sqrt())
+            } else {
+                acc
+            }
+        });
+        if count > 0.0 {
+            let mean = sum / count;
             if mean.magnitude2() > 0.0 {
                 limit_force(mean.normalize_to(MAX_SPEED) - self.velocity)
             } else {
@@ -158,16 +156,16 @@ impl Boid {
     where
         I: Iterator<Item = &'a Boid>,
     {
-        let mut count = 0;
+        let mut count = 0.0;
         let sum = boids
             .map(|b| {
-                count = count + 1;
+                count += 1.;
                 b.velocity
             })
             .sum::<Vector2f>();
 
-        if count > 0 {
-            let mean = sum / count as f64;
+        if count > 0.0 {
+            let mean = sum / count;
             if mean.magnitude2() > 0.0 {
                 limit_force(mean.normalize_to(MAX_SPEED) - self.velocity)
             } else {
@@ -182,16 +180,16 @@ impl Boid {
     where
         I: Iterator<Item = &'a Boid>,
     {
-        let mut count = 0;
+        let mut count = 0.0;
         let sum = boids
             .map(|b| {
-                count = count + 1;
+                count += 1.0;
                 b.position.to_vec()
             })
             .sum::<Vector2f>();
 
-        if count > 0 {
-            self.steer_to(Point2f::from_vec(sum / count as f64))
+        if count > 0.0 {
+            self.steer_to(Point2f::from_vec(sum / count))
         } else {
             Vector2f::zero()
         }
@@ -251,9 +249,9 @@ impl event::EventHandler for MainState {
     fn update(&mut self, ctx: &mut Context) -> GameResult<()> {
         let delta = timer::get_delta(ctx);
         self.world.update(
-            delta.as_secs() as f64 + delta.subsec_nanos() as f64 / 1_000_000_000.0,
-            ctx.conf.window_mode.width as f64,
-            ctx.conf.window_mode.height as f64,
+            delta.as_secs() as f64 + f64::from(delta.subsec_nanos()) / 1_000_000_000.0,
+            f64::from(ctx.conf.window_mode.width),
+            f64::from(ctx.conf.window_mode.height),
         );
         Ok(())
     }
