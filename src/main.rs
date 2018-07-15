@@ -218,8 +218,8 @@ impl MainState {
                 .build(ctx)?,
         };
 
-        graphics::set_color(ctx, graphics::Color::new(0.0, 0.0, 0.0, 1.0))?;
-        graphics::set_background_color(ctx, graphics::Color::new(1.0, 1.0, 1.0, 1.0));
+        graphics::set_color(ctx, graphics::Color::new(0.2, 0.2, 0.2, 1.0))?;
+        graphics::set_background_color(ctx, graphics::Color::new(0.9, 0.9, 0.9, 1.0));
 
         Ok(s)
     }
