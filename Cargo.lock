@@ -636,15 +636,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "moverep"
-version = "0.1.0"
-dependencies = [
- "cgmath 0.16.1 (registry+https://github.com/rust-lang/crates.io-index)",
- "ggez 0.4.3 (registry+https://github.com/rust-lang/crates.io-index)",
- "rand 0.5.3 (registry+https://github.com/rust-lang/crates.io-index)",
-]
-
-[[package]]
 name = "msdos_time"
 version = "0.1.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1104,6 +1095,15 @@ version = "0.4.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
  "serde 1.0.70 (registry+https://github.com/rust-lang/crates.io-index)",
+]
+
+[[package]]
+name = "torus-flock"
+version = "0.1.0"
+dependencies = [
+ "cgmath 0.16.1 (registry+https://github.com/rust-lang/crates.io-index)",
+ "ggez 0.4.3 (registry+https://github.com/rust-lang/crates.io-index)",
+ "rand 0.5.3 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]

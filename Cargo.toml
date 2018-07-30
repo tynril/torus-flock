@@ -1,7 +1,12 @@
 [package]
-name = "moverep"
+name = "torus-flock"
 version = "0.1.0"
 authors = ["Samuel Loretan <tynril@gmail.com>"]
+license = "MIT"
+description = "A Boid-like flocking system, on a torus (i.e. a plane that connects on both sides)."
+repository = "https://github.com/tynril/torus-flock"
+keywords = ["ai", "flocking", "game"]
+readme = "README.md"
 
 [dependencies]
 ggez = "0.4"
