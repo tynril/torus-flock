@@ -172,7 +172,8 @@ impl Boid {
             if distance_sq > 0.0 && distance_sq < DESIRED_SEPARATION_SQ {
                 separate_count += 1;
                 separation_sum += toroidal_difference(&boid.position, &self.position, space_size)
-                    .normalize() / distance_sq.sqrt();
+                    .normalize()
+                    / distance_sq.sqrt();
             }
 
             // Velocity
@@ -263,16 +264,15 @@ impl MainState {
                         Point2::new(5.0, 0.0),
                         Point2::new(-3.0, 2.0),
                     ],
-                )
-                .build(ctx)?,
+                ).build(ctx)?,
             space_size: Vector2f::new(
                 f64::from(ctx.conf.window_mode.width),
                 f64::from(ctx.conf.window_mode.height),
             ),
         };
 
-        graphics::set_color(ctx, graphics::Color::new(0.2, 0.2, 0.2, 1.0))?;
-        graphics::set_background_color(ctx, graphics::Color::new(0.9, 0.9, 0.9, 1.0));
+        graphics::set_color(ctx, graphics::Color::new(0.1, 0.1, 0.1, 1.0))?;
+        graphics::set_background_color(ctx, graphics::Color::new(0.95, 0.95, 0.95, 1.0));
 
         Ok(s)
     }
@@ -311,14 +311,14 @@ impl event::EventHandler for MainState {
 
 pub fn main() {
     let mut c = conf::Conf::new();
-    c.window_mode.width = 1920;
-    c.window_mode.height = 1080;
-    let ctx = &mut Context::load_from_conf("helloworld", "ggez", c).unwrap();
+    c.window_mode.width = 1280;
+    c.window_mode.height = 720;
+    let ctx = &mut Context::load_from_conf("torus-flock", "tynril", c).unwrap();
 
     let state = &mut MainState::new(ctx).unwrap();
     if let Err(e) = event::run(ctx, state) {
         println!("Error encountered: {}", e);
     } else {
-        println!("Game exited cleanly.");
+        println!("Exited cleanly.");
     }
 }
