@@ -124,7 +124,7 @@ impl Boid {
                 thread_rng().gen_range(0.0 - MAX_SPEED, MAX_SPEED),
                 thread_rng().gen_range(0.0 - MAX_SPEED, MAX_SPEED),
             ),
-            rotation: 0.0,
+            rotation: thread_rng().gen_range(0.0, 359.0),
         })
     }
 
@@ -313,6 +313,8 @@ pub fn main() {
     let mut c = conf::Conf::new();
     c.window_mode.width = 1280;
     c.window_mode.height = 720;
+    c.window_setup.title = "Torus Flock".to_owned();
+    c.window_setup.samples = conf::NumSamples::Sixteen;
     let ctx = &mut Context::load_from_conf("torus-flock", "tynril", c).unwrap();
 
     let state = &mut MainState::new(ctx).unwrap();
